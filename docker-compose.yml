@@ -1,6 +1,22 @@
 version: "3.9"
 
 services:
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin123 # Ganti password sesuai keinginan
+      POSTGRES_DB: repository-db   # Nama database awal
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - partnership-network
+
   qdrant:
     image: qdrant/qdrant:latest
     platform: linux/amd64
@@ -77,6 +93,7 @@ volumes:
   qdrant_data:
   minio_data:
   es_data:
+  postgres_data:
 
 configs:
   qdrant_config:

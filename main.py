@@ -263,14 +263,23 @@ async def upload_and_index(file: UploadFile):
         )
 
 @app.get("/search")
-def search_documents(q: str):
-    """Cari dokumen berdasarkan query."""
+def search_documents(q: str, limit: int = 10):
+    """
+    Cari dokumen berdasarkan query dengan batasan jumlah hasil.
+    Contoh request: /search?q=kontrak&limit=20
+    """
     
     try:
-        results = keyword_search(q)
+        # Panggil fungsi search dengan parameter size (limit) yang dinamis
+        results = keyword_search(q, size=limit)
+        
         return response(
             message="Search success",
-            data=results,
+            data={
+                "total_found": len(results), # Info jumlah dokumen yang ditemukan
+                "limit_requested": limit,    # Info limit yang diminta
+                "results": results           # Daftar dokumennya
+            },
             error=None,
             status_code=200
         )
@@ -282,7 +291,101 @@ def search_documents(q: str):
             error=str(e),
             status_code=500
         )
+# @app.get("/search")
+# def search_documents(q: str):
+#     """Cari dokumen berdasarkan query."""
+    
+#     try:
+#         results = keyword_search(q)
+#         return response(
+#             message="Search success",
+#             data=results,
+#             error=None,
+#             status_code=200
+#         )
 
+#     except Exception as e:
+#         return response(
+#             message="Search failed",
+#             data=None,
+#             error=str(e),
+#             status_code=500
+#         )
+
+
+# Pastikan Anda mengimpor Form dari fastapi
+# from fastapi import Form
+
+@app.post("/chat-document")
+async def chat_specific_document(
+    query: str = Form(...),
+    filename: str = Form(...), # 🔹 Parameter wajib: Nama file spesifik
+):
+    """
+    Chat khusus untuk satu dokumen saja.
+    Membatasi konteks jawaban AI hanya dari file yang dipilih.
+    """
+    try:
+        # 1. Generate embedding dari pertanyaan user
+        query_vector = generate_embedding(query)
+
+        # 2. Cari konteks TAPI difilter hanya untuk filename tersebut
+        context_text = search_similar(query_vector, limit=10, filename=filename)
+
+        # Jika tidak ada konteks (misal user bertanya hal yang tidak ada di dokumen)
+        if not context_text:
+            return response(
+                message="Context not found",
+                data={
+                    "query": query,
+                    "filename": filename,
+                    "answer": f"Maaf, saya tidak menemukan informasi mengenai '{query}' di dalam dokumen {filename}."
+                },
+                status_code=200
+            )
+
+        clean_context = clean_text(context_text)
+
+        # 3. Buat Prompt Spesifik
+        full_prompt = f"""
+        Anda adalah asisten AI khusus untuk dokumen: "{filename}".
+        Tugas Anda adalah menjawab pertanyaan user HANYA berdasarkan konteks dokumen yang diberikan di bawah ini.
+        
+        === KONTEKS DARI DOKUMEN ===
+        {clean_context}
+
+        === PERTANYAAN USER ===
+        {query}
+
+        Instruksi:
+        - Jawab dengan format HTML (<h3>, <p>, <ul>).
+        - Jika jawabannya tidak ada di konteks, katakan dengan jujur bahwa informasi tidak ditemukan di dokumen ini.
+        - Jangan mengarang jawaban di luar konteks yang diberikan.
+        """
+
+        # 4. Generate jawaban via Gemini (tanpa webSearch agar fokus ke dokumen)
+        answer = generate_answer(prompt=full_prompt, webSearch=False)
+        
+        cleaned_answer = answer.replace("```html", "").replace("```", "").strip()
+
+        return response(
+            message="Chat success",
+            data={
+                "query": query,
+                "filename": filename,
+                "answer": cleaned_answer
+            },
+            status_code=200
+        )
+
+    except Exception as e:
+        return response(
+            message="Chat failed",
+            data=None,
+            error=str(e),
+            status_code=500
+        )
+    
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True, log_level="debug")
