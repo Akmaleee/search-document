@@ -1,0 +1,74 @@
+// prisma/schema.prisma
+
+generator client {
+  provider             = "prisma-client-py"
+  interface            = "asyncio"
+  recursive_type_depth = 5
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id            String     @id @default(uuid())
+  email         String     @unique
+  password_hash String
+  full_name     String
+  role          Role       @default(USER)
+  active        Boolean    @default(true)
+  created_at    DateTime   @default(now())
+  updated_at    DateTime   @updatedAt
+  deleted_at    DateTime?
+  
+  uploaded_docs Document[] @relation("UserUploads")
+  favorites     Favorite[]
+
+  @@map("users")
+}
+
+model Document {
+  id          String   @id @default(uuid())
+  title       String
+  filename    String   @unique
+  file_url    String   // Link akses file
+  file_type   String   // pdf, docx, dll
+
+  year        Int?
+  tags        String[]
+  summary     String?  @db.Text
+
+  citation_mla     String? @db.Text
+  citation_apa     String? @db.Text
+  citation_ieee    String? @db.Text
+  citation_harvard String? @db.Text
+
+  uploaded_by String
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  deleted_at  DateTime?
+
+  uploader    User       @relation("UserUploads", fields: [uploaded_by], references: [id])
+  favoritedBy Favorite[]
+
+  @@map("documents")
+}
+
+model Favorite {
+  id          String   @id @default(uuid())
+  user_id     String
+  document_id String
+  assigned_at DateTime @default(now())
+
+  user     User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [document_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, document_id])
+  @@map("favorites")
+}
