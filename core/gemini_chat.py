@@ -43,7 +43,7 @@ def generate_answer(prompt: str, webSearch: bool = False):
 def extract_metadata_with_gemini(text_content: str):
     """
     Mengirim teks dokumen ke Gemini untuk dianalisis metadatanya
-    (Tahun, Tags, Summary, Citations) sesuai format JSON.
+    (Tahun, Tags, Summary, Highlight, Citations) sesuai format JSON.
     """
     try:
         # Potong teks jika terlalu panjang (hemat token & agar fokus ke header/intro dokumen)
@@ -75,44 +75,6 @@ def extract_metadata_with_gemini(text_content: str):
             "year": None,
             "tags": ["Uncategorized"],
             "summary": "Gagal membuat ringkasan otomatis.",
+            "highlight": "Gagal membuat poin penting otomatis.", # ✅ Tambahan fallback untuk highlight
             "citations": {}
         }
-
-# from core.config import Config
-# from google import genai
-# from google.genai import types
-# import os
-# from dotenv import load_dotenv
-# load_dotenv()
-
-# client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-
-# def generate_answer(prompt: str, webSearch: bool = False):
-#     """
-#     Generate jawaban berbasis konteks menggunakan model Gemini.
-#     Jika webSearch=True, maka Google Search akan digunakan sebagai sumber tambahan.
-#     """
-
-#     # Jika webSearch True, tambahkan grounding tool Google Search
-#     if webSearch:
-#         grounding_tool = types.Tool(
-#             google_search=types.GoogleSearch()
-#         )
-
-#         config = types.GenerateContentConfig(
-#             tools=[grounding_tool]
-#         )
-
-#         response = client.models.generate_content(
-#             model="gemini-2.5-flash",
-#             contents=prompt,
-#             config=config,
-#         )
-#     else:
-#         # Tanpa Google Search
-#         response = client.models.generate_content(
-#             model="gemini-2.5-flash",
-#             contents=prompt,
-#         )
-
-#     return response.text

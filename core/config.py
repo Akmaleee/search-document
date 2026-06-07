@@ -18,3 +18,10 @@ class Config:
 
     CHUNK_SIZE = 500
     CHUNK_OVERLAP = 100
+    
+    # SMTP Config
+    SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+    SMTP_USERNAME = os.getenv("SMTP_USERNAME")
+    SMTP_CODE = os.getenv("SMTP_CODE")
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
