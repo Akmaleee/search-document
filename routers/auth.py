@@ -47,11 +47,20 @@ class ResetPasswordRequest(BaseModel):
 # ENDPOINTS
 # ==========================================
 
+
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
     """Mendaftarkan user baru dan mengirim email verifikasi"""
     
-    # 1. Cek apakah email sudah ada
+    # --- 1. GATEKEEPER: Validasi Email Akademik PNJ ---
+    # Memastikan email wajib diakhiri dengan ".pnj.ac.id"
+    if not data.email.endswith(".pnj.ac.id"):
+        raise HTTPException(
+            status_code=400,
+            detail="Registrasi ditolak. Anda wajib menggunakan email akademik resmi PNJ (berakhiran .pnj.ac.id)"
+        )
+
+    # 2. Cek apakah email sudah ada
     result = await db.execute(select(User).where(User.email == data.email))
     user_exist = result.scalars().first()
     
@@ -70,11 +79,11 @@ async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
             detail="NIM sudah terdaftar di sistem."
         )
 
-    # 2. Hash Password & Generate Token Verifikasi
+    # 3. Hash Password & Generate Token Verifikasi
     hashed_pwd = get_password_hash(data.password)
     verification_token = secrets.token_urlsafe(32)
 
-    # 3. Simpan ke Database
+    # 4. Simpan ke Database
     new_user = User(
         email=data.email,
         password_hash=hashed_pwd,
@@ -91,10 +100,60 @@ async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(new_user)
 
-    # 4. Kirim email verifikasi di background
+    # 5. Kirim email verifikasi di background
     await send_verification_email(data.email, verification_token)
 
     return {"message": "Registrasi berhasil. Silakan cek email Anda untuk verifikasi."}
+
+
+# @router.post("/register", status_code=status.HTTP_201_CREATED)
+# async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
+#     """Mendaftarkan user baru dan mengirim email verifikasi"""
+    
+#     # 1. Cek apakah email sudah ada
+#     result = await db.execute(select(User).where(User.email == data.email))
+#     user_exist = result.scalars().first()
+    
+#     if user_exist:
+#         raise HTTPException(
+#             status_code=400,
+#             detail="Email sudah terdaftar. Silakan gunakan email lain."
+#         )
+
+#     # Cek juga apakah NIM sudah terdaftar
+#     result_nim = await db.execute(select(User).where(User.nim == data.nim))
+#     nim_exist = result_nim.scalars().first()
+#     if nim_exist:
+#         raise HTTPException(
+#             status_code=400,
+#             detail="NIM sudah terdaftar di sistem."
+#         )
+
+#     # 2. Hash Password & Generate Token Verifikasi
+#     hashed_pwd = get_password_hash(data.password)
+#     verification_token = secrets.token_urlsafe(32)
+
+#     # 3. Simpan ke Database
+#     new_user = User(
+#         email=data.email,
+#         password_hash=hashed_pwd,
+#         full_name=data.full_name,
+#         nim=data.nim,            # Masukkan NIM dari payload
+#         prodi=data.prodi,        # Masukkan Prodi dari payload
+#         role=Role.USER, 
+#         active=True,
+#         is_verified=False, # User belum bisa login sebelum verifikasi email
+#         verification_token=verification_token
+#     )
+    
+#     db.add(new_user)
+#     await db.commit()
+#     await db.refresh(new_user)
+
+#     # 4. Kirim email verifikasi di background
+#     await send_verification_email(data.email, verification_token)
+
+#     return {"message": "Registrasi berhasil. Silakan cek email Anda untuk verifikasi."}
 
 
 @router.get("/verify")

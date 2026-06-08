@@ -65,6 +65,13 @@ class GuidelineRequest(BaseModel):
     step_number: int
     description: str
 
+class AdminCreateUserRequest(BaseModel):
+    full_name: str
+    email: str
+    nim: str  # Untuk dosen/admin, ini diisi NIP atau NIDN mereka
+    prodi: Optional[str] = None
+    password: str
+    role: str # "ADMIN", "DOSEN", atau "USER"
 
 
 # ==========================================
@@ -574,6 +581,86 @@ async def admin_get_all_users(
     except Exception as e:
         return response(message="Gagal mengambil daftar pengguna", error=str(e), status_code=500)
 
+@app.post("/admin/users")
+async def admin_create_user(
+    request: AdminCreateUserRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Admin membuat akun baru secara langsung (Bypass verifikasi email)."""
+    import re
+    import secrets # 👈 Tambahan untuk membuat dummy token
+    
+    # Pastikan fungsi hash ini bisa diimport. Jika error, sesuaikan path-nya (misal dari core.security)
+    from routers.auth import get_password_hash 
+    
+    try:
+        verify_admin(current_user)
+        
+        # 1. GATEKEEPER: Validasi Email
+        if not request.email.endswith(".pnj.ac.id"):
+            return response(message="Gagal membuat akun. Wajib menggunakan email resmi PNJ (.pnj.ac.id)", status_code=400)
+
+        # 2. GATEKEEPER: Validasi NIM/NIP
+        if not request.nim.isdigit() or len(request.nim) > 10:
+            return response(message="Gagal membuat akun. NIM/NIP harus berupa angka dan maksimal 10 digit.", status_code=400)
+
+        # 3. GATEKEEPER: Validasi Password
+        if len(request.password) < 8:
+            return response(message="Gagal membuat akun. Password minimal 8 karakter.", status_code=400)
+        if not re.search(r"[A-Z]", request.password):
+            return response(message="Gagal membuat akun. Password harus mengandung minimal 1 huruf besar.", status_code=400)
+        if not re.search(r"[a-z]", request.password):
+            return response(message="Gagal membuat akun. Password harus mengandung minimal 1 huruf kecil.", status_code=400)
+        if not re.search(r"\d", request.password):
+            return response(message="Gagal membuat akun. Password harus mengandung minimal 1 angka.", status_code=400)
+        if not re.search(r"[@$!%*?&#]", request.password):
+            return response(message="Gagal membuat akun. Password harus mengandung minimal 1 simbol khusus (@$!%*?&#).", status_code=400)
+
+        # 4. Cek Database
+        email_check = await db.execute(select(User).where(User.email == request.email))
+        if email_check.scalars().first():
+            return response(message="Gagal membuat akun. Email tersebut sudah terdaftar.", status_code=400)
+            
+        nim_check = await db.execute(select(User).where(User.nim == request.nim))
+        if nim_check.scalars().first():
+            return response(message="Gagal membuat akun. NIM/NIP tersebut sudah terdaftar.", status_code=400)
+
+        # 5. BERSIHKAN DATA PRODI (Ubah string kosong "" jadi None agar DB Enum tidak error)
+        safe_prodi = request.prodi if request.prodi and request.prodi.strip() != "" else None
+
+        # 6. Hash Password & Buat Dummy Token
+        hashed_pwd = get_password_hash(request.password)
+        dummy_token = secrets.token_urlsafe(32) # 👈 Buat token acak agar lolos validasi NOT NULL database
+
+        # 7. Simpan Akun Baru
+        new_user = User(
+            email=request.email,
+            password_hash=hashed_pwd,
+            full_name=request.full_name,
+            nim=request.nim,
+            prodi=safe_prodi, # 👈 Gunakan prodi yang sudah dibersihkan
+            role=Role(request.role), 
+            active=True,
+            is_verified=True, 
+            verification_token=dummy_token # 👈 Masukkan dummy token
+        )
+        
+        db.add(new_user)
+        await db.commit()
+        await db.refresh(new_user)
+        
+        return response(
+            message=f"Akun {request.role} atas nama {request.full_name} berhasil dibuat.",
+            data={"id": new_user.id, "email": new_user.email},
+            status_code=201
+        )
+    except Exception as e:
+        await db.rollback()
+        import traceback
+        traceback.print_exc() 
+        return response(message="Gagal membuat akun", error=str(e), status_code=500)
+    
 @app.patch("/admin/users/{user_id}/role")
 async def admin_change_user_role(
     user_id: str,
