@@ -79,4 +79,4 @@ USER appuser
 EXPOSE 8000
 
 # Ubah "app.main:app" jika modul/objek FastAPI kamu berbeda
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
