@@ -48,7 +48,7 @@ services:
     networks:
       - partnership-network
 
-  qdrant:
+  qdrant-akmal:
     image: qdrant/qdrant:latest
     platform: linux/amd64
     restart: always
