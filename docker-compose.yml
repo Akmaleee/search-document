@@ -1,6 +1,37 @@
 version: "3.9"
 
 services:
+    api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smartrepository-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:admin123@postgres:5432/repository-db
+      MINIO_URL_INTERNAL: http://minio:9000
+      MINIO_URL_EXTERNAL: http://localhost:8017
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: partnership
+      QDRANT_API_KEY: 10982e89-6518-4094-9639-526e3c9f1fba
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      GOOGLE_API_KEY: your_gemini_key_here
+      SMTP_SERVER: smtp.gmail.com
+      SMTP_PORT: 587
+      SMTP_USERNAME: masakmaltop@gmail.com
+      SMTP_CODE: vlzjqhsxwluqdtoh
+      FRONTEND_URL: https://smartrepository.web.id
+    ports:
+      - "8022:8000"
+    depends_on:
+      - postgres
+      - qdrant
+      - minio
+      - elasticsearch
+    networks:
+      - partnership-network
 
   postgres:
     image: postgres:15-alpine
@@ -8,10 +39,10 @@ services:
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: admin123 # Ganti password sesuai keinginan
-      POSTGRES_DB: repository-db   # Nama database awal
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: repository-db
     ports:
-      - "5432:5432"
+      - "8014:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -23,8 +54,8 @@ services:
     restart: always
     container_name: qdrant
     ports:
-      - "6333:6333"
-      - "6334:6334"
+      - "8015:6333"
+      - "8016:6334"
     volumes:
       - qdrant_data:/qdrant/storage
     configs:
@@ -41,8 +72,8 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "8017:9000"
+      - "8018:9001"
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001" --address ":9000"
@@ -64,8 +95,8 @@ services:
         soft: -1
         hard: -1
     ports:
-      - "9200:9200"
-      - "9300:9300"
+      - "8019:9200"
+      - "8020:9300"
     volumes:
       - es_data:/usr/share/elasticsearch/data
     networks:
@@ -78,7 +109,7 @@ services:
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     ports:
-      - "5601:5601"
+      - "8021:5601"
     depends_on:
       - elasticsearch
     networks:
