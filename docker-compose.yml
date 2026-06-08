@@ -33,7 +33,7 @@ services:
     networks:
       - partnership-network
 
-  postgres:
+  postgres-akmal:
     image: postgres:15-alpine
     container_name: postgres-akmal
     restart: always
@@ -64,7 +64,7 @@ services:
     networks:
       - partnership-network
 
-  minio:
+  minio-akmal:
     image: minio/minio:latest
     container_name: minio-akmal
     restart: unless-stopped
@@ -80,9 +80,9 @@ services:
     networks:
       - partnership-network
 
-  elasticsearch:
+  elasticsearch-akmal:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
-    container_name: elasticsearch
+    container_name: elasticsearch-akmal
     restart: unless-stopped
     environment:
       - discovery.type=single-node
@@ -102,16 +102,16 @@ services:
     networks:
       - partnership-network
 
-  kibana:
+  kibana-akmal:
     image: docker.elastic.co/kibana/kibana:8.15.3
     container_name: kibana-akmal
     restart: unless-stopped
     environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_HOSTS=http://elasticsearch-akmal:9200
     ports:
       - "8021:5601"
     depends_on:
-      - elasticsearch
+      - elasticsearch-akmal
     networks:
       - partnership-network
 
