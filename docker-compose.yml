@@ -8,15 +8,15 @@ services:
     container_name: smartrepository-api
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:admin123@postgres:5432/repository-db
-      MINIO_URL_INTERNAL: http://minio:9000
+      DATABASE_URL: postgresql+asyncpg://postgres:admin123@postgres-akmal:5432/repository-db
+      MINIO_URL_INTERNAL: http://minio-akmal:9000
       MINIO_URL_EXTERNAL: http://localhost:8017
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
-      QDRANT_URL: http://qdrant:6333
+      QDRANT_URL: http://qdrant-akmal:6333
       QDRANT_COLLECTION: partnership
       QDRANT_API_KEY: 10982e89-6518-4094-9639-526e3c9f1fba
-      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_URL: http://elasticsearch-akmal:9200
       GOOGLE_API_KEY: your_gemini_key_here
       SMTP_SERVER: smtp.gmail.com
       SMTP_PORT: 587
@@ -26,16 +26,16 @@ services:
     ports:
       - "8022:8000"
     depends_on:
-      - postgres
-      - qdrant
-      - minio
-      - elasticsearch
+      - postgres-akmal
+      - qdrant-akmal
+      - minio-akmal
+      - elasticsearch-akmal
     networks:
       - partnership-network
 
   postgres:
     image: postgres:15-alpine
-    container_name: postgres
+    container_name: postgres-akmal
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -52,7 +52,7 @@ services:
     image: qdrant/qdrant:latest
     platform: linux/amd64
     restart: always
-    container_name: qdrant
+    container_name: qdrant-akmal
     ports:
       - "8015:6333"
       - "8016:6334"
@@ -66,7 +66,7 @@ services:
 
   minio:
     image: minio/minio:latest
-    container_name: minio
+    container_name: minio-akmal
     restart: unless-stopped
     environment:
       MINIO_ROOT_USER: minioadmin
@@ -104,7 +104,7 @@ services:
 
   kibana:
     image: docker.elastic.co/kibana/kibana:8.15.3
-    container_name: kibana
+    container_name: kibana-akmal
     restart: unless-stopped
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
